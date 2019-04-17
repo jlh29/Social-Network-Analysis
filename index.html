@@ -29,6 +29,14 @@
 		    right:50px;
 		    z-index: 0;
     	}
+    	#inputContainer {
+    		width: 30%;
+		    height: 100%;
+		    position: absolute;
+		    top:100px;
+		    left:0px;
+		    z-index: 0;
+    	}
 		#map {
 			width: 100%;
 		    height: 50%;
@@ -50,13 +58,19 @@
 
 
 <body>
-	<p>Please select a CSV file here:</p>
-	<div id="dropZone">
-		<input type="file" id="fileSelector" name="fileSelector"/>
-		<output id="fileDescription"></output>
+	<div id="inputContainer">
+		<p>Please select a CSV file here:</p>
+		<div id="dropZone">
+			<input type="file" id="fileSelector" name="fileSelector"/>
+			<output id="fileDescription"></output>
+		</div>	
+		<input type="radio" name="csvTypeRadio" value=1 checked>Type 1<br>
+		<input type="radio" name="csvTypeRadio" value=2>Type 2<br>
+		<p>Type 1: label, tweet_object, infered_point, local_time</p>
+		<p>Type 2: ID, userID, date, Followers, Friends, Statuses, Lat, Long, Text, Class, BoroCode, BoroName, NTAName, CenstracID</p>
+		<div id="spacer"></div>
+		<button type="button" id="analyzeButton">Analyze</button>
 	</div>
-	<div id="spacer"></div>
-	<button type="button" id="analyzeButton">Analyze</button>
 	<div id="spacer"></div>
 	<div id="datacontainer">
 		<div id="map"></div>

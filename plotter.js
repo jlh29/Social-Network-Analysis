@@ -1,38 +1,70 @@
 
 //Initial testing for converting the example CSV files into JavaScript objects to easily be used in visualization
-function convertCSVToObjs(csvContents){
+//Type 1: label, tweet_object, infered_point, local_time
+//Type 2: ID, userID, date, Followers, Friends, Statuses, Lat, Long, Text, Class, BoroCode, BoroName, NTAName, CenstracID
+
+function convertCSVToObjs(csvContents, csvType = 1){
+	var debug = false;
+
 	var lines = csvContents.split("\n");
 	if(lines.length < 1)
 		return [];
 	var extractedObjects = [];
 	var headerElements = lines[0].split(",");
-	console.log("This file has " + headerElements.length + " columns");
+	if(debug)
+		console.log("This file has " + headerElements.length + " columns");
 	for(var i = 1; i < lines.length; i++){
 		if(lines[i].length == 0)
 			continue;
-		if(i%10 == 0){
+		if(i%10 == 0&&debug){
 			console.log("Processing line " + i);
 		}
 		var currObj = {};
-		var currLine = splitOuter(lines[i], ',');
+		var currLine = (csvType == 2 && lines[i].split(",").length == headerElements.length)?lines[i].split(","):splitOuter(lines[i], ',', csvType);
 		if(currLine.length != headerElements.length){
 			console.log("Inspect current line; splitOuter does not return correct value.");
 			console.log(lines[i]);
 			console.log(currLine);
 			return;			
 		}
-		currObj.label = currLine[0];
-		currObj.tweetObject = JSON.parse(currLine[1]);
-		currObj.inferedPoint = JSON.parse(currLine[2]);
-		currObj.inferedPointStr = currLine[2];
-		currObj.localTime = currLine[3];
-		extractedObjects.push(currObj);
+		if(csvType == 1){
+			currObj.label = currLine[0];
+			currObj.tweetObject = JSON.parse(currLine[1]);
+			currObj.inferedPoint = JSON.parse(currLine[2]);
+			currObj.inferedPointStr = currLine[2];
+			currObj.localTime = currLine[3];
+			extractedObjects.push(currObj);
+		} else if(csvType == 2){
+			//Class => label
+			currObj.label = currLine[9];
+			currObj.id = currLine[0];
+			currObj.tweetObject = {};
+			currObj.tweetObject.userID = currLine[1];
+			currObj.tweetObject.followers = currLine[3];
+			currObj.tweetObject.friends = currLine[4];
+			currObj.tweetObject.statuses = currLine[5];
+			currObj.tweetObject.text = currLine[8];
+			currObj.inferedPointStr = "{\"coordinates\":["+currLine[7]+","+currLine[6]+"], \"type\": \"Point\"}";
+			currObj.inferedPoint = JSON.parse(currObj.inferedPointStr);
+			currObj.boro = {};
+			currObj.boro.code = currLine[10];
+			currObj.boro.name = currLine[11];
+			currObj.boro.ntaName = currLine[12];
+			currObj.censtracID = currLine[13];
+			currObj.localTime = currLine[2];
+			extractedObjects.push(currObj);
+		} else {
+			console.log("Invalid CSV conversion type");
+			return;
+		}
 	}
 
 	return extractedObjects;
 }
 
 //Function to retrieve the local time only (not including date)
+
+//NEEDS TO BE UPDATED FOR BOTH TYPES OF FILES
 function getTime(csvObject){
 	console.log(csvObject.localTime);
 	var comps = csvObject.localTime.split(" ");
@@ -41,15 +73,12 @@ function getTime(csvObject){
 }
 
 //Function to retrieve the date only (not including the local time) 
+
+//NEEDS TO BE UPDATED FOR BOTH TYPES OF FILES
 function getDate(csvObject){
 	var comps = csvObject.localTime.split(" ");
 	return comps[1] + " " + comps[2] + " " + comps[5];
 }
-
-function getLocation(csvObject){
-	//Maybe convert to GeoJSON format? Or just do something with the JSON information that is already available?
-}
-
 
 //With CSV files that aren't pre-sorted/filtered but are labeled as (1) related or (0) unrelated, just retrieve the desired objects
 function filterLabel(csvObjects, desiredLabel){
@@ -64,33 +93,55 @@ function filterLabel(csvObjects, desiredLabel){
 
 //Custom function to split the example CSV file without external libraries. To fix any errors where the internal commas would 
 //interfere (such as within the tweet_object and infered_point columns), I make sure that the commas are outside of any object
-function splitOuter(str, delimiter){
-	var fixedStr = stripExtraQuotes(str);
+function splitOuter(str, delimiter, csvType = 1){
+	var fixedStr = stripExtraQuotes(str, ((csvType==1)?false:true));
 	var numOpenings = 0;
+	var inQuote = false;
 	var splitResult = [];
 	var startIndex = 0;
 	for(var i = 0; i < fixedStr.length; i++){
-		if(fixedStr.charAt(i) == delimiter && numOpenings == 0){
-			splitResult.push(fixedStr.substring(startIndex, i));
-			startIndex = i+1;
-		} else if (fixedStr.charAt(i) == '{') {
-			numOpenings++;
-		} else if (fixedStr.charAt(i) == '}') {
-			numOpenings--;
+		if(csvType==1){
+			if(fixedStr.charAt(i) == delimiter && numOpenings == 0){
+				splitResult.push(fixedStr.substring(startIndex, i));
+				startIndex = i+1;
+			} else if (fixedStr.charAt(i) == '{') {
+				numOpenings++;
+			} else if (fixedStr.charAt(i) == '}') {
+				numOpenings--;
+			}
+		} else {
+			if(fixedStr.charAt(i) == delimiter && numOpenings == 0 && inQuote == false){
+				splitResult.push(fixedStr.substring(startIndex, i));
+				startIndex = i+1;
+			} else if (fixedStr.charAt(i) == '{') {
+				numOpenings++;
+			} else if (fixedStr.charAt(i) == '}') {
+				numOpenings--;
+			} else if (fixedStr.charAt(i) == '\"') {
+				inQuote = !inQuote;
+			}
 		}
 	}
 	splitResult.push(fixedStr.substring(startIndex));
 	return splitResult;
 }
 
-function stripExtraQuotes(str){
+function stripExtraQuotes(str, onlyDouble = false){
 	var tempStr = "";
 	var startIndex = 0;
 	for(var i = 0; i < str.length; i++){
 		if(str.charAt(i) == '"'){
-			tempStr += str.substring(startIndex, i);
-			i++;
-			startIndex = i;
+			if(onlyDouble){
+				if(str.charAt(++i) == '"'){
+					tempStr += str.substring(startIndex, i-1);
+					i++;
+					startIndex = i;
+				}
+			} else {
+				tempStr += str.substring(startIndex, i);
+				i++;
+				startIndex = i;
+			}
 		}
 	}
 	tempStr += str.substring(startIndex);
@@ -130,7 +181,11 @@ function addLocationMarkers(tweetObjects, geoJSONLayer){
 	}
 	var i = 0;
 	for(var key of numAtLocation.keys()){
-		var currPos = JSON.parse(key);
+		try{
+			var currPos = JSON.parse(key);
+		} catch {
+			console.log("Error on key: " + key);
+		}
 		currPos.numAtLocation = numAtLocation.get(key);
 		geoJSONLayer.addData(currPos);
 	}
@@ -145,6 +200,7 @@ window.onload = function(){
 	    id: 'mapbox.streets',
 	    accessToken: 'pk.eyJ1IjoiamxoMjkiLCJhIjoiY2p1a3lncDdxMHI1MTQzbzR0NDN4bDdxciJ9.v5aYG6rQPqpJONdRVSiRZw'
 	}).addTo(map);
+	var layerGroup = L.layerGroup().addTo(map);
 
 
 	//Drag and drop zone
@@ -170,15 +226,14 @@ window.onload = function(){
 				}
 			}
 		}
-		//var tweets = convertCSVToObjs(csvContents);
-		//Get midpoint of all tweets
-		var tweetLayer = L.geoJSON(null, {onEachFeature: function(feature, layer){layer.bindPopup("<b>There " + ((feature.numAtLocation > 1)?"are ":"is ") + feature.numAtLocation + " Tweet" + ((feature.numAtLocation>1)?"s":"") + " from this location</b>");}}).addTo(map);
+		layerGroup.clearLayers();
+		var tweetLayer = L.geoJSON(null, {onEachFeature: function(feature, layer){layer.bindPopup("<b>There " + ((feature.numAtLocation > 1)?"are ":"is ") + feature.numAtLocation + " Tweet" + ((feature.numAtLocation>1)?"s":"") + " from this location</b>");}}).addTo(layerGroup);
 		var reader = new FileReader();
 		var csvText = "";
 		reader.onload = function(e) {
 			csvText = reader.result;
-
-			var tweets = convertCSVToObjs(csvText);
+			var csvType = document.querySelector("input[name=\"csvTypeRadio\"]:checked").value;
+			var tweets = convertCSVToObjs(csvText, csvType);
 			console.log("Gathered " + tweets.length + " tweets");
 			addLocationMarkers(tweets, tweetLayer);
 
