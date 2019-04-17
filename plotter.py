@@ -21,6 +21,10 @@ def read_csv(csvName, showMap, timeStep):
 
 			print(x)
 			x+=1
+			if x<5:
+				for word in row:
+					for char in word:
+						print(char)
 			#Reads all 100 rows + header so far
 			
 
