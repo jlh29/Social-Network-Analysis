@@ -24,6 +24,7 @@ function convertCSVToObjs(csvContents){
 		currObj.label = currLine[0];
 		currObj.tweetObject = JSON.parse(currLine[1]);
 		currObj.inferedPoint = JSON.parse(currLine[2]);
+		currObj.inferedPointStr = currLine[2];
 		currObj.localTime = currLine[3];
 		extractedObjects.push(currObj);
 	}
@@ -121,14 +122,17 @@ function handleDragOver(event){
 function addLocationMarkers(tweetObjects, geoJSONLayer){
 	var numAtLocation = new Map();
 	for(var i = 0; i < tweetObjects.length; i++){
-		if(numAtLocation.has(tweetObjects[i].inferedPoint)){
-			numAtLocation.set(tweetObjects[i].inferedPoint, numAtLocation.get(tweetObjects[i].inferedPoint)+1);
+		if(numAtLocation.has(tweetObjects[i].inferedPointStr)){
+			numAtLocation.set(tweetObjects[i].inferedPointStr, numAtLocation.get(tweetObjects[i].inferedPointStr)+1);
 		} else {
-			numAtLocation.set(tweetObjects[i].inferedPoint, 1);
+			numAtLocation.set(tweetObjects[i].inferedPointStr, 1);
 		}
 	}
+	var i = 0;
 	for(var key of numAtLocation.keys()){
-		geoJSONLayer.addData(key);
+		var currPos = JSON.parse(key);
+		currPos.numAtLocation = numAtLocation.get(key);
+		geoJSONLayer.addData(currPos);
 	}
 }
 
@@ -168,7 +172,7 @@ window.onload = function(){
 		}
 		//var tweets = convertCSVToObjs(csvContents);
 		//Get midpoint of all tweets
-		var tweetLayer = L.geoJSON().addTo(map);
+		var tweetLayer = L.geoJSON(null, {onEachFeature: function(feature, layer){layer.bindPopup("<b>There " + ((feature.numAtLocation > 1)?"are ":"is ") + feature.numAtLocation + " Tweet" + ((feature.numAtLocation>1)?"s":"") + " from this location</b>");}}).addTo(map);
 		var reader = new FileReader();
 		var csvText = "";
 		reader.onload = function(e) {
