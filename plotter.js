@@ -13,6 +13,19 @@ function convertCSVToObjs(csvContents, csvType = 1){
 	var headerElements = lines[0].split(",");
 	if(debug)
 		console.log("This file has " + headerElements.length + " columns");
+	if(csvType == 0){
+		switch(headerElements.length){
+			case 4: 
+				csvType = 1;
+				break;
+			case 14:
+				csvType = 2;
+				break;
+			default:
+				alert("This file is in an unrecognized format.");
+				return;
+		}
+	}
 	for(var i = 1; i < lines.length; i++){
 		if(lines[i].length == 0)
 			continue;
@@ -232,7 +245,8 @@ window.onload = function(){
 		var csvText = "";
 		reader.onload = function(e) {
 			csvText = reader.result;
-			var csvType = document.querySelector("input[name=\"csvTypeRadio\"]:checked").value;
+			var radioButton = document.querySelector("input[name=\"csvTypeRadio\"]:checked");
+			var csvType = (radioButton==null)?0:radioButton.value;
 			var tweets = convertCSVToObjs(csvText, csvType);
 			console.log("Gathered " + tweets.length + " tweets");
 			addLocationMarkers(tweets, tweetLayer);
