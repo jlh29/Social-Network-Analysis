@@ -1,3 +1,4 @@
+//Initial testing for converting the example CSV files into JavaScript objects to easily be used in visualization
 function convertCSVToObjs(csvContents){
 	var lines = csvContents.split("\n");
 	if(lines.length < 1)
@@ -14,31 +15,47 @@ function convertCSVToObjs(csvContents){
 		for(var j = 0; j < headerElements.length; i++){
 			currObj[j] = currLine[j];
 		}
-		currObj["label"] = currObj[0];
-		currObj["tweet_object"] = JSON.parse(currObj[1]);
-		currObj["infered_point"] = JSON.parse(currObj[2]);
-		currObj["local_time"] = currObj[3];
+		currObj.label = currObj[0];
+		currObj.tweetObject = JSON.parse(currObj[1]);
+		currObj.inferedPoint = JSON.parse(currObj[2]);
+		currObj.localTime = currObj[3];
 		extractedObjects.push(currObj);
 	}
 	return extractedObjects;
 }
 
+//Function to retrieve the local time only (not including date)
 function getTime(csvObject){
-	console.log(csvObject["local_time"]);
-	var comps = csvObject["local_time"].split(" ");
+	console.log(csvObject.localTime);
+	var comps = csvObject.localTime.split(" ");
 	var localTime = comps[3];
 	return localTime;
 }
 
+//Function to retrieve the date only (not including the local time) 
 function getDate(csvObject){
-	var comps = csvObject["local_time"].split(" ");
+	var comps = csvObject.localTime.split(" ");
 	return comps[1] + " " + comps[2] + " " + comps[5];
 }
 
 function getLocation(csvObject){
-	
+	//Maybe convert to GeoJSON format? Or just do something with the JSON information that is already available?
 }
 
+
+//With CSV files that aren't pre-sorted/filtered but are labeled as (1) related or (0) unrelated, just retrieve the desired objects
+function filterLabel(csvObjects, desiredLabel){
+	var filtered = [];
+	for(var i = 0; i < csvObjects.length; i++){
+		if(csvObjects[i].label == desiredLabel) {
+			filtered.push(csvObjects[i]);
+		}
+	}
+	return filtered;
+}
+
+//Custom function to split the example CSV file without external libraries. To fix any errors where the internal commas would 
+//interfere (such as within the tweet_object and infered_point columns), I make sure that the commas are outside of any object
 function splitOuter(str, delimiter){
 	var numOpenings = 0;
 	var splitResult = [];
@@ -55,4 +72,13 @@ function splitOuter(str, delimiter){
 	}
 	splitResult.push(str.substring(startIndex));
 	return splitResult;
+}
+
+//To be used in a simple browser-based visualization tool
+function loadFile(pathName){
+	if(window.File && window.FileReader && window.FileList && window.Blob){
+		
+	} else {
+		alert("Possibile incompatibilities with file I/O");
+	}
 }
