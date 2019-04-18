@@ -30,11 +30,11 @@
 		    z-index: 0;
     	}
     	#inputContainer {
-    		width: 30%;
+    		width: 28%;
 		    height: 100%;
 		    position: absolute;
 		    top:100px;
-		    left:0px;
+		    left:2%;
 		    z-index: 0;
     	}
 		#map {
@@ -55,6 +55,12 @@
 		#typeDescription {
 			word-wrap: break-word;
 		}
+		#analyzeButton {
+			position:relative;
+			width:150px;
+			margin:0 auto;
+			display:block;
+		}
 	</style>
 
 </head>
@@ -73,7 +79,9 @@
 		<p>Type 1: label, tweet_object, infered_point, local_time</p>
 		<p>Type 2: ID, userID, date, Followers, Friends, Statuses, Lat, Long, Text, Class, BoroCode, BoroName, NTAName, CenstracID</p>
 		<div id="spacer"></div>
-		<button type="button" id="analyzeButton">Analyze</button>
+		<div id="buttonDiv">
+			<button type="button" id="analyzeButton">Analyze</button>
+		</div>
 	</div>
 	<div id="spacer"></div>
 	<div id="datacontainer">
