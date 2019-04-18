@@ -3,6 +3,7 @@
 //Type 1: label, tweet_object, infered_point, local_time
 //Type 2: ID, userID, date, Followers, Friends, Statuses, Lat, Long, Text, Class, BoroCode, BoroName, NTAName, CenstracID
 
+var globalCSVType = 1;
 
 function convertCSVToObjs(csvContents, csvType = 1){
 	var debug = false;
@@ -17,15 +18,17 @@ function convertCSVToObjs(csvContents, csvType = 1){
 	if(csvType == 0){
 		switch(headerElements.length){
 			case 4: 
-				csvType = 1;
+				globalCSVType = 1;
 				break;
 			case 14:
-				csvType = 2;
+				globalCSVType = 2;
 				break;
 			default:
 				alert("This file is in an unrecognized format.");
 				return;
 		}
+	} else {
+		globalCSVType = csvType;
 	}
 	for(var i = 1; i < lines.length; i++){
 		if(lines[i].length == 0)
@@ -34,21 +37,21 @@ function convertCSVToObjs(csvContents, csvType = 1){
 			console.log("Processing line " + i);
 		}
 		var currObj = {};
-		var currLine = (csvType == 2 && lines[i].split(",").length == headerElements.length)?lines[i].split(","):splitOuter(lines[i], ',', csvType);
+		var currLine = (globalCSVType == 2 && lines[i].split(",").length == headerElements.length)?lines[i].split(","):splitOuter(lines[i], ',', globalCSVType);
 		if(currLine.length != headerElements.length){
 			console.log("Inspect current line; splitOuter does not return correct value.");
 			console.log(lines[i]);
 			console.log(currLine);
 			return;			
 		}
-		if(csvType == 1){
+		if(globalCSVType == 1){
 			currObj.label = currLine[0];
 			currObj.tweetObject = JSON.parse(currLine[1]);
 			currObj.inferedPoint = JSON.parse(currLine[2]);
 			currObj.inferedPointStr = currLine[2];
 			currObj.localTime = currLine[3];
 			extractedObjects.push(currObj);
-		} else if(csvType == 2){
+		} else if(globalCSVType == 2){
 			//Class => label
 			currObj.label = currLine[9];
 			currObj.id = currLine[0];
@@ -74,24 +77,6 @@ function convertCSVToObjs(csvContents, csvType = 1){
 	}
 
 	return extractedObjects;
-}
-
-//Function to retrieve the local time only (not including date)
-
-//NEEDS TO BE UPDATED FOR BOTH TYPES OF FILES
-function getTime(csvObject){
-	console.log(csvObject.localTime);
-	var comps = csvObject.localTime.split(" ");
-	var localTime = comps[3];
-	return localTime;
-}
-
-//Function to retrieve the date only (not including the local time) 
-
-//NEEDS TO BE UPDATED FOR BOTH TYPES OF FILES
-function getDate(csvObject){
-	var comps = csvObject.localTime.split(" ");
-	return comps[1] + " " + comps[2] + " " + comps[5];
 }
 
 //With CSV files that aren't pre-sorted/filtered but are labeled as (1) related or (0) unrelated, just retrieve the desired objects
@@ -162,6 +147,150 @@ function stripExtraQuotes(str, onlyDouble = false){
 	return tempStr;
 }
 
+function sortByTime(tweetObjects, csvType){
+	if(csvType != 1 || csvType != 2){
+		console.log("Incorrect parameter in sort by time");
+		return;
+	}
+	for(var i = 1; i < tweetObjects.length; i++){
+		if(compareTimes(tweetObjects[i].localTime, tweetObjects[i-1].localTime, csvType) < 0){
+			for(var j = i; j > 0; j--){
+				if(compareTimes(tweetObjects[j].localTime, tweetObjects[j-1].localTime) < 0){
+					swap(tweetObjects, j, j-1);
+				} else {
+					break;
+				}
+			}
+		}
+	}
+}
+
+//Type 1, localTime format: Sun Jan 01 00:02:49 -0500 2017
+//Type 2, localTime format: 10/29/2012  2:22:00 PM
+
+function comparePostTimes(time1, time2, csvType){
+	var date1 = getDate(time1, csvType);
+	var date2 = getDate(time2, csvType);
+	var hours1 = getTime(time1, csvType);
+	var hours2 = getTime(time2, csvType);
+	if(compareDates(date1, date2) > 0){
+		return 1;
+	} else if (compareDates(date1, date2) < 0){
+		return -1;
+	} else {
+		if(compareTimes(hours1, hours2) > 0){
+			return 1;
+		} else if (compareTimes(hours1, hours2) < 0){
+			return -1;
+		} else {
+			return 0;
+		}
+	}
+}
+
+
+//Takes in dates in the format yyyy/mm/dd
+// 1 if date1 > date2
+// 0 if date1 == date2
+// -1 if date1 < date2
+function compareDates(date1, date2){
+	var comps1 = date1.split("/");
+	var comps2 = date2.split("/");
+	for(var i = 0; i < 3; i++){
+		if(parseInt(comps1[i]) > parseInt(comps2[i])){
+			return 1;
+		} else if (parseInt(comps1[i]) < parseInt(comps2[i])){
+			return -1;
+		}
+	}
+	return 0;
+}
+
+//Takes in times in the 24h format hh:mm:ss
+// 1 if time1 > time2
+// 0 if time1 == time2
+// -1 if time1 < time2
+function compareTimes(time1, time2){
+	var comps1 = time1.split(":");
+	var comps2 = time2.split(":");
+	for(var i = 0; i < 3; i++){
+		if(parseInt(comps1[i]) > parseInt(comps2[i])){
+			return 1;
+		} else if (parseInt(comps1[i]) < parseInt(comps2[i])){
+			return -1;
+		}
+	}
+	return 0;
+}
+
+//Function to retrieve the local time only (not including date)
+//Type 1, localTime format: Sun Jan 01 00:02:49 -0500 2017
+//Type 2, localTime format: 10/29/2012  2:22:00 PM
+
+//Returns time in standardized 24h format, hh:mm:ss
+function getTime(str, csvType){
+	if(csvType == 1){
+		var comps = str.split(" ");
+		//Possibly add a parameter for UTC/global time? 
+		return comps[3];
+	} else if (csvType == 2){
+		var comps = str.split(" ");
+		var time = comps[2];
+		var timeComps = time.split(":");
+		if(comps[3].toLowerCase() == "pm"){
+			if(timeComps[0] != "12"){
+				timeComps[0] = (parseInt(timeComps[0]) + 12).toString();
+			}
+			return timeComps.join(":");
+		} else if(timeComps[0] == "12"){
+			timeComps[0] = "00";
+			return timeComps.join(":");
+		} else {
+			return time;
+		}
+
+	} else {
+		console.log("Invalid parameters in getTime function");
+		return undefined;
+	}
+}
+
+//Function to retrieve the date only (not including the local time) 
+//Type 1, localTime format: Sun Jan 01 00:02:49 -0500 2017
+//Type 2, localTime format: 10/29/2012  2:22:00 PM
+
+//Returns date in standardized format yyyy/mm/dd
+function getDate(str, csvType){
+	if(csvType == 1){
+		var comps = str.split(" ");
+		//May need to modify depending on format
+		var months = {"jan":1, "feb":2, "mar":3, "apr":4, "may":5, "jun":6, "jul":7, "aug":8, "sep":9, "oct":10, "nov":11, "dec":12};
+		var month = months[comps[1].toLowerCase()];
+		if(month == undefined){
+			console.log("Date error; month is not formatted correctly. Send \"" + comps[1] + "\" to developer");
+			return undefined;
+		}
+		var day = comps[2];
+		var year = comps[5];
+		return year + "/" + month + "/" + day;
+
+	} else if (csvType == 2){
+		var comps = str.split(" ");
+		var date = comps[0];
+		var dateComps = date.split("/");
+		return dateComps[2] + "/" + dateComps[0] + "/" + dateComps[1];
+	} else {
+		console.log("Invalid parameters in getDate function");
+		return undefined;
+	}
+}
+
+
+function swap(arr, ind1, ind2){
+	var temp = arr[ind1];
+	arr[ind1] = arr[ind2];
+	arr[ind2] = temp;
+}
 
 //PAGE ELEMENTS
 
@@ -208,6 +337,31 @@ function addLocationMarkers(tweetObjects, geoJSONLayer){
 }
 
 window.onload = function(){
+
+
+	/*
+	///////////////////////////////////////		DATE/TIME COMPARISON TESTS /////////////////////////
+	//Type 1, localTime format: Sun Jan 01 00:02:49 -0500 2017
+	//Type 2, localTime format: 10/29/2012  2:22:00 PM
+	//console.log(getDate("Sun Jan 01 00:02:49 -0500 2017", 1));
+	//console.log(getDate("10/29/2012  2:22:00 PM", 2));
+	console.log("Test 1: should be -1");
+	console.log(comparePostTimes("Sun Jan 01 00:02:49 -0500 2017", "Sun Aug 18 00:04:09 -0500 2017", 1));
+	console.log("Test 2: should be 1");
+	console.log(comparePostTimes("Sun Jan 01 00:02:49 -0500 2017", "Sun Jan 01 00:01:49 -0500 2017", 1));
+	console.log("Test 3: should be 0");
+	console.log(comparePostTimes("Sun Jan 01 00:02:49 -0500 2017", "Sun Jan 01 00:02:49 -0500 2017", 1));
+
+	console.log("Test 1: should be -1");
+	console.log(comparePostTimes("10/29/2012  2:22:00 PM", "4/19/2013  2:22:00 PM", 2));
+	console.log("Test 2: should be 1");
+	console.log(comparePostTimes("10/29/2012  2:22:00 PM", "10/29/2012  2:22:00 AM", 2));
+	console.log("Test 3: should be 0");
+	console.log(comparePostTimes("10/29/2012  2:22:00 PM", "10/29/2012  2:22:00 PM", 2));
+	*/
+
+	
+
 	//Map
 	var map = L.map("map").setView([35,-95],3);
 	L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}', {
