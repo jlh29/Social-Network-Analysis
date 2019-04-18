@@ -3,6 +3,7 @@
 //Type 1: label, tweet_object, infered_point, local_time
 //Type 2: ID, userID, date, Followers, Friends, Statuses, Lat, Long, Text, Class, BoroCode, BoroName, NTAName, CenstracID
 
+
 function convertCSVToObjs(csvContents, csvType = 1){
 	var debug = false;
 
@@ -182,6 +183,8 @@ function handleDragOver(event){
 	event.preventDefault();
 	event.dataTransfer.dropEffect = "copy";
 }
+
+//Need to deal with not only duplicates, but markers that are very close to each other, as shown in the NYCsandy_during.csv 
 
 function addLocationMarkers(tweetObjects, geoJSONLayer){
 	var numAtLocation = new Map();
