@@ -11,3 +11,6 @@ Next will be to work with Phil to get a line graph working.
 
 To view an online version of the program, go here:
 https://jlh29.github.io/Social-Network-Analysis/
+
+
+(Also, JSierraAKAMC is my personal GitHub account that my Git client is logged in with, and jlh29 is my school account)
