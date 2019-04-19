@@ -502,9 +502,7 @@ window.onload = function(){
 				var csvType = (radioButton==null)?0:radioButton.value;
 				//Create tweets array
 				tweets = convertCSVToObjs(csvText, csvType);
-				console.log("Gathered " + tweets.length + " tweets");
 				shownTweets = filterDateRange(tweets, filterDate1, filterDate2);
-				console.log("Filtered to " + shownTweets.length + " tweets");
 				
 				//Add the markers to the map
 				addLocationMarkers(shownTweets, tweetLayer);
