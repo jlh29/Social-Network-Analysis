@@ -104,6 +104,18 @@ function filterLabel(csvObjects, desiredLabel){
 	return filtered;
 }
 
+function filterDate(csvObjects, desiredDate){
+	var filtered = [];
+	//sortByTime(csvObjects);
+	for(var i = 0; i < csvObjects.length; i++){
+		var currDate = new Date(csvObjects[i].localTime);
+		if(compareDatesObjs(currDate, desiredDate) == 0){
+			filtered.push(csvObjects[i]);
+		}
+	}
+	return filtered;
+}
+
 //Custom function to split the example CSV file without external libraries. 
 //To fix any errors where the internal commas would interfere 
 //(such as within the tweet_object and infered_point columns), 
@@ -187,24 +199,10 @@ function sortByTime(tweetObjects){
 //1 if time1 > time2
 //0 if time1 = time2
 //-1 if time1 < time2
-function comparePostTimes(time1, time2, csvType = globalCSVType){
-	var date1 = getDate(time1, csvType);
-	var date2 = getDate(time2, csvType);
-	var hours1 = getTime(time1, csvType);
-	var hours2 = getTime(time2, csvType);
-	if(compareDates(date1, date2) > 0){
-		return 1;
-	} else if (compareDates(date1, date2) < 0){
-		return -1;
-	} else {
-		if(compareTimes(hours1, hours2) > 0){
-			return 1;
-		} else if (compareTimes(hours1, hours2) < 0){
-			return -1;
-		} else {
-			return 0;
-		}
-	}
+function comparePostTimes(time1, time2){
+	var date1 = new Date(time1);
+	var date2 = new Date(time2);
+	return ((date1>date2)?1:((date1<date2)?-1:0))
 }
 
 
@@ -221,6 +219,22 @@ function compareDates(date1, date2){
 		} else if (parseInt(comps1[i]) < parseInt(comps2[i])){
 			return -1;
 		}
+	}
+	return 0;
+}
+
+//Takes in dates as date objects
+// 1 if date1 > date2
+// 0 if date1 == date2
+// -1 if date1 < date2
+function compareDatesObjs(date1, date2){
+	var date1Comps = [date1.getFullYear(), date1.getMonth(), date1.getDate()];
+	var date2Comps = [date2.getFullYear(), date2.getMonth(), date2.getDate()];
+	for(var i = 0; i < 3; i++){
+		if(date1Comps[i] > date2Comps[i])
+			return 1;
+		else if(date1Comps[i] < date2Comps[i])
+			return -1;
 	}
 	return 0;
 }
@@ -248,31 +262,9 @@ function compareTimes(time1, time2){
 
 //Function to retrieve the local time only (not including date or time zones (YET))
 //Returns time in standardized 24h format, hh:mm:ss
-function getTime(str, csvType = globalCSVType){
-	if(csvType == 1){
-		var comps = str.split(" ");
-		//Possibly add a parameter for UTC/global time? 
-		return comps[3];
-	} else if (csvType == 2){
-		var comps = str.split(" ");
-		var time = comps[2];
-		var timeComps = time.split(":");
-		if(comps[3].toLowerCase() == "pm"){
-			if(timeComps[0] != "12"){
-				timeComps[0] = (parseInt(timeComps[0]) + 12).toString();
-			}
-			return timeComps.join(":");
-		} else if(timeComps[0] == "12"){
-			timeComps[0] = "00";
-			return timeComps.join(":");
-		} else {
-			return time;
-		}
-
-	} else {
-		console.log("Invalid parameters in getTime function");
-		return undefined;
-	}
+function getTime(str){
+	var date = new Date(str);
+	return date.toTimeString().split(" ")[0];
 }
 
  
@@ -280,34 +272,14 @@ function getTime(str, csvType = globalCSVType){
 //Type 2, localTime format: 10/29/2012  2:22:00 PM
 //Function to retrieve the local date only (not including the local time or time zone (YET))
 //Returns date in standardized format yyyy/mm/dd
-function getDate(str, csvType = globalCSVType){
-	console.log(str);
-	if(csvType == 1){
-		var comps = str.split(" ");
-		//May need to modify depending on format
-		var months = {"jan":1, "feb":2, "mar":3, "apr":4, "may":5, "jun":6, "jul":7, "aug":8, "sep":9, "oct":10, "nov":11, "dec":12};
-		var month = months[comps[1].toLowerCase()];
-		if(month == undefined){
-			console.log("Date error; month is not formatted correctly. Send \"" + comps[1] + "\" to developer");
-			return undefined;
-		}
-		var day = comps[2];
-		var year = comps[5];
-		return year + "/" + month + "/" + day;
+function getDate(str){
+	var date = new Date(str);
+	return date.getFullYear() + "/" + (date.getMonth()+1) + "/" + date.getDate();
+}
 
-	} else if (csvType == 2){
-		var comps = str.split(" ");
-		var date = comps[0];
-		var dateComps = date.split("/");
-		if(dateComps.length <= 1){
-			dateComps = date.split("-");
-			return dateComps[0] + "/" + dateComps[1] + "/" + dateComps[2];
-		}
-		return dateComps[2] + "/" + dateComps[0] + "/" + dateComps[1];
-	} else {
-		console.log("Invalid parameters in getDate function");
-		return undefined;
-	}
+//Returns new Date object
+function getDateObj(str){
+	return new Date(str);
 }
 
 //Helper function for the sorting algorithm
@@ -340,7 +312,7 @@ function handleDragOver(event){
 }
 
 function lerpColor(color1, color2, t){
-	
+
 }
 
 //Need to deal with not only duplicates, but markers that are very close to each other, 
@@ -429,7 +401,6 @@ function getTimeDifference(dateObj1, dateObj2){
 //This code runs when the page is fully loaded and mainly deals with loading and handling the file,
 //as well as showing the data on the map
 window.onload = function(){
-
 	//Map
 	var map = L.map("map").setView([35,-95],3);
 	L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}', {
@@ -503,6 +474,7 @@ window.onload = function(){
 				//Create tweets array
 				tweets = convertCSVToObjs(csvText, csvType);
 				console.log("Gathered " + tweets.length + " tweets");
+				
 				//Add the markers to the map
 				addLocationMarkers(tweets, tweetLayer);
 				//Adjust the map to fit the markers
