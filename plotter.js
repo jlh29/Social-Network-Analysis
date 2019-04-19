@@ -3,8 +3,20 @@
 //Type 1: label, tweet_object, infered_point, local_time
 //Type 2: ID, userID, date, Followers, Friends, Statuses, Lat, Long, Text, Class, BoroCode, BoroName, NTAName, CenstracID
 
+
+//Stores the CSV type of the last read file
 var globalCSVType = 1;
 
+//This function converts the text from a CSV file that matches one of the predefined formats into 
+//an array of "tweet" objects that contain a label (which is a description in Type 2 and
+//0 or 1 in Type 1 that represents whether the tweet matches the search), 
+//the local time/date (which you can extract a normalized form of through getTime/getDate),
+//the "inferedPoint" or geographic location, which is stored as both a JSON string and an object,
+//the tweetObject (which may be the actual tweet object or a recreated tweet object) containing
+//the tweet text, followers, friends, user ID, etc.,
+//and possibly a couple other properties depending on the format of CSV input (like BoroCode, BoroName, etc)
+
+//The format can be seen at the top
 function convertCSVToObjs(csvContents, csvType = 1){
 	var debug = false;
 
@@ -79,19 +91,24 @@ function convertCSVToObjs(csvContents, csvType = 1){
 	return extractedObjects;
 }
 
-//With CSV files that aren't pre-sorted/filtered but are labeled as (1) related or (0) unrelated, just retrieve the desired objects
+//With CSV files that aren't pre-sorted/filtered but are labeled as (1) related or (0) unrelated 
+//(or classified by a topic), just retrieve the desired objects 
+//Returns an array of tweet objects that match the desiredLabel
 function filterLabel(csvObjects, desiredLabel){
 	var filtered = [];
 	for(var i = 0; i < csvObjects.length; i++){
-		if(csvObjects[i].label == desiredLabel) {
+		if(csvObjects[i].label.toLowerCase() == desiredLabel.toLowerCase()) {
 			filtered.push(csvObjects[i]);
 		}
 	}
 	return filtered;
 }
 
-//Custom function to split the example CSV file without external libraries. To fix any errors where the internal commas would 
-//interfere (such as within the tweet_object and infered_point columns), I make sure that the commas are outside of any object
+//Custom function to split the example CSV file without external libraries. 
+//To fix any errors where the internal commas would interfere 
+//(such as within the tweet_object and infered_point columns), 
+//I make sure that the commas are outside of any object
+//and in the case of the second type of CSV, I remove only double quotes ("")
 function splitOuter(str, delimiter, csvType = 1){
 	var fixedStr = stripExtraQuotes(str, ((csvType==1)?false:true));
 	var numOpenings = 0;
@@ -125,6 +142,8 @@ function splitOuter(str, delimiter, csvType = 1){
 	return splitResult;
 }
 
+
+//Custom function to strip all extra quotes that are not needed
 function stripExtraQuotes(str, onlyDouble = false){
 	var tempStr = "";
 	var startIndex = 0;
@@ -147,6 +166,7 @@ function stripExtraQuotes(str, onlyDouble = false){
 	return tempStr;
 }
 
+//Sorts a list of tweet objects by time
 function sortByTime(tweetObjects, csvType){
 	if(csvType != 1 || csvType != 2){
 		console.log("Incorrect parameter in sort by time");
@@ -165,9 +185,14 @@ function sortByTime(tweetObjects, csvType){
 	}
 }
 
+
+
 //Type 1, localTime format: Sun Jan 01 00:02:49 -0500 2017
 //Type 2, localTime format: 10/29/2012  2:22:00 PM
-
+//Compares two time strings in one of the formats above
+//1 if time1 > time2
+//0 if time1 = time2
+//-1 if time1 < time2
 function comparePostTimes(time1, time2, csvType){
 	var date1 = getDate(time1, csvType);
 	var date2 = getDate(time2, csvType);
@@ -223,10 +248,11 @@ function compareTimes(time1, time2){
 	return 0;
 }
 
-//Function to retrieve the local time only (not including date)
+
 //Type 1, localTime format: Sun Jan 01 00:02:49 -0500 2017
 //Type 2, localTime format: 10/29/2012  2:22:00 PM
 
+//Function to retrieve the local time only (not including date or time zones (YET))
 //Returns time in standardized 24h format, hh:mm:ss
 function getTime(str, csvType){
 	if(csvType == 1){
@@ -255,10 +281,10 @@ function getTime(str, csvType){
 	}
 }
 
-//Function to retrieve the date only (not including the local time) 
+ 
 //Type 1, localTime format: Sun Jan 01 00:02:49 -0500 2017
 //Type 2, localTime format: 10/29/2012  2:22:00 PM
-
+//Function to retrieve the local date only (not including the local time or time zone (YET))
 //Returns date in standardized format yyyy/mm/dd
 function getDate(str, csvType){
 	if(csvType == 1){
@@ -285,7 +311,7 @@ function getDate(str, csvType){
 	}
 }
 
-
+//Helper function for the sorting algorithm
 function swap(arr, ind1, ind2){
 	var temp = arr[ind1];
 	arr[ind1] = arr[ind2];
@@ -293,11 +319,11 @@ function swap(arr, ind1, ind2){
 }
 
 //PAGE ELEMENTS
-
+//Pans the map to a new position (OBSELETE?)
 function updateMap(map, newPos, newZoom){
 	map.panTo(newPos, newZoom);
 }
-
+//This for drag/drop functionality
 function handleFileSelect(event){
 	event.stopPropagation();
 	event.preventDefault();
@@ -307,14 +333,15 @@ function handleFileSelect(event){
 	document.getElementById("fileSelector").innerHTML = file.name;
 
 }
+//This is also for drag/drop functionality
 function handleDragOver(event){
 	event.stopPropagation();
 	event.preventDefault();
 	event.dataTransfer.dropEffect = "copy";
 }
 
-//Need to deal with not only duplicates, but markers that are very close to each other, as shown in the NYCsandy_during.csv 
-
+//Need to deal with not only duplicates, but markers that are very close to each other, 
+//as shown in the NYCsandy_during.csv. Not yet complete 
 function addLocationMarkers(tweetObjects, geoJSONLayer){
 	var numAtLocation = new Map();
 	for(var i = 0; i < tweetObjects.length; i++){
@@ -324,7 +351,6 @@ function addLocationMarkers(tweetObjects, geoJSONLayer){
 			numAtLocation.set(tweetObjects[i].inferedPointStr, 1);
 		}
 	}
-	var i = 0;
 	for(var key of numAtLocation.keys()){
 		try{
 			var currPos = JSON.parse(key);
@@ -336,9 +362,9 @@ function addLocationMarkers(tweetObjects, geoJSONLayer){
 	}
 }
 
+//This code runs when the page is fully loaded and mainly deals with loading and handling the file,
+//as well as showing the data on the map
 window.onload = function(){
-
-
 	/*
 	///////////////////////////////////////		DATE/TIME COMPARISON TESTS /////////////////////////
 	//Type 1, localTime format: Sun Jan 01 00:02:49 -0500 2017
@@ -381,6 +407,16 @@ window.onload = function(){
 
 	//AnalyzeButton
 	document.getElementById("analyzeButton").addEventListener("click", function(){
+
+		//Clear all markers if any are present
+		layerGroup.clearLayers();
+		//Add a new tweet layer on the map that holds all of the markers
+		var tweetLayer = L.geoJSON(null, {onEachFeature: function(feature, layer){
+			//Popup contents:
+			layer.bindPopup("<b>There " + ((feature.numAtLocation > 1)?"are ":"is ") + feature.numAtLocation + " Tweet" + ((feature.numAtLocation>1)?"s":"") + " from this location</b>");
+		}}).addTo(layerGroup);
+
+		/////////////////Reading file and creating a tweetObject array///////////////// 
 		if(document.getElementById("fileSelector").files.length == 0){
 			alert("Please select a file!");
 			return;
@@ -396,18 +432,21 @@ window.onload = function(){
 				}
 			}
 		}
-		layerGroup.clearLayers();
-		var tweetLayer = L.geoJSON(null, {onEachFeature: function(feature, layer){layer.bindPopup("<b>There " + ((feature.numAtLocation > 1)?"are ":"is ") + feature.numAtLocation + " Tweet" + ((feature.numAtLocation>1)?"s":"") + " from this location</b>");}}).addTo(layerGroup);
+		//Create a file reader, and read it to csvText
 		var reader = new FileReader();
 		var csvText = "";
+		//Code is executed when the reader is fully loaded and ready to operate on the file
 		reader.onload = function(e) {
 			csvText = reader.result;
+			//Grab the selected type (or recognize if there is not a type specified)
 			var radioButton = document.querySelector("input[name=\"csvTypeRadio\"]:checked");
 			var csvType = (radioButton==null)?0:radioButton.value;
+			//Create tweets array
 			var tweets = convertCSVToObjs(csvText, csvType);
 			console.log("Gathered " + tweets.length + " tweets");
+			//Add the markers to the map
 			addLocationMarkers(tweets, tweetLayer);
-
+			//Adjust the map to fit the markers
 			map.fitBounds(tweetLayer.getBounds());
 			
 		};
