@@ -109,7 +109,7 @@ function filterLabel(csvObjects, desiredLabel){
 //(such as within the tweet_object and infered_point columns), 
 //I make sure that the commas are outside of any object
 //and in the case of the second type of CSV, I remove only double quotes ("")
-function splitOuter(str, delimiter, csvType = 1){
+function splitOuter(str, delimiter, csvType = globalCSVType){
 	var fixedStr = stripExtraQuotes(str, ((csvType==1)?false:true));
 	var numOpenings = 0;
 	var inQuote = false;
@@ -167,24 +167,18 @@ function stripExtraQuotes(str, onlyDouble = false){
 }
 
 //Sorts a list of tweet objects by time
-function sortByTime(tweetObjects, csvType){
-	if(csvType != 1 || csvType != 2){
-		console.log("Incorrect parameter in sort by time");
-		return;
-	}
+function sortByTime(tweetObjects){
 	for(var i = 1; i < tweetObjects.length; i++){
-		if(compareTimes(tweetObjects[i].localTime, tweetObjects[i-1].localTime, csvType) < 0){
-			for(var j = i; j > 0; j--){
-				if(compareTimes(tweetObjects[j].localTime, tweetObjects[j-1].localTime) < 0){
-					swap(tweetObjects, j, j-1);
-				} else {
-					break;
-				}
-			}
+		var date1 = new Date(tweetObjects[i].localTime);
+		var j = i;
+		var date2;
+		while(j > 0 && (date2 = new Date(tweetObjects[j-1].localTime))>date1){
+			swap(tweetObjects, j, j-1);
+			j--;
 		}
+		
 	}
 }
-
 
 
 //Type 1, localTime format: Sun Jan 01 00:02:49 -0500 2017
@@ -193,7 +187,7 @@ function sortByTime(tweetObjects, csvType){
 //1 if time1 > time2
 //0 if time1 = time2
 //-1 if time1 < time2
-function comparePostTimes(time1, time2, csvType){
+function comparePostTimes(time1, time2, csvType = globalCSVType){
 	var date1 = getDate(time1, csvType);
 	var date2 = getDate(time2, csvType);
 	var hours1 = getTime(time1, csvType);
@@ -254,7 +248,7 @@ function compareTimes(time1, time2){
 
 //Function to retrieve the local time only (not including date or time zones (YET))
 //Returns time in standardized 24h format, hh:mm:ss
-function getTime(str, csvType){
+function getTime(str, csvType = globalCSVType){
 	if(csvType == 1){
 		var comps = str.split(" ");
 		//Possibly add a parameter for UTC/global time? 
@@ -286,7 +280,8 @@ function getTime(str, csvType){
 //Type 2, localTime format: 10/29/2012  2:22:00 PM
 //Function to retrieve the local date only (not including the local time or time zone (YET))
 //Returns date in standardized format yyyy/mm/dd
-function getDate(str, csvType){
+function getDate(str, csvType = globalCSVType){
+	console.log(str);
 	if(csvType == 1){
 		var comps = str.split(" ");
 		//May need to modify depending on format
@@ -304,6 +299,10 @@ function getDate(str, csvType){
 		var comps = str.split(" ");
 		var date = comps[0];
 		var dateComps = date.split("/");
+		if(dateComps.length <= 1){
+			dateComps = date.split("-");
+			return dateComps[0] + "/" + dateComps[1] + "/" + dateComps[2];
+		}
 		return dateComps[2] + "/" + dateComps[0] + "/" + dateComps[1];
 	} else {
 		console.log("Invalid parameters in getDate function");
@@ -362,31 +361,69 @@ function addLocationMarkers(tweetObjects, geoJSONLayer){
 	}
 }
 
+function updateChartTimeInterval(tweets, timeInterval, csvType = globalCSVType){
+	var dataPoints = [];
+	
+	var chart = new CanvasJS.Chart("lineGraph", {
+		title: {text:"Tweets vs. Time"},
+		axisY:{title:"Number of Tweets"},
+		axisX:{title:"Time"},
+		data:[{type:"line", dataPoints:dataPoints}]
+		/*
+		scales:     {
+                xAxes: [{
+                    type:       "time",
+                    time:       {
+                        format: "MM/DD/YYYY HH:MM:SS",
+                        tooltipFormat: 'll'
+                    }
+                }]
+            }*/
+	});
+	fillDataPointsTimeInterval(dataPoints, tweets, timeInterval, csvType);
+	chart.render();
+}
+
+////NEED TO DEBUG
+function fillDataPointsTimeInterval(dataPoints, tweets, timeInterval, csvType = globalCSVType){
+	//Sorting is not currently needed because tweets are already sorted
+	sortByTime(tweets);
+	var minTime = tweets[0].localTime;
+	var minDateObj = new Date(minTime);
+	var maxTime = tweets[tweets.length-1].localTime;
+	var maxDateObj = new Date(maxTime);
+	var numIntervals = getTimeDifference(minDateObj, maxDateObj) / timeInterval;
+	var currTime = 0;
+	var currIndex = 0;
+	for(var i = 0; i < numIntervals; i++){
+		currTime += timeInterval;
+		var numAtTime = 0;
+		for(currIndex; currIndex < tweets.length; currIndex++){
+			var timeDiff = getTimeDifference(new Date(tweets[currIndex].localTime), minDateObj);
+			if(timeDiff <= currTime){
+				numAtTime++;
+			} else {
+				break;
+			}
+		}
+		var currDateObj = new Date(minDateObj.getTime() + (currTime-timeInterval) * 60000);
+		dataPoints.push({x:currDateObj,y:numAtTime});
+	}
+}
+
+function getTimeDifference(dateObj1, dateObj2){
+	if(dateObj1>dateObj2){
+		return (dateObj1.getTime()-dateObj2.getTime())/60000;
+	} else if (dateObj1<dateObj2){
+		return (dateObj2.getTime()-dateObj1.getTime())/60000;
+	} else {
+		return 0;
+	}
+}
+
 //This code runs when the page is fully loaded and mainly deals with loading and handling the file,
 //as well as showing the data on the map
 window.onload = function(){
-	/*
-	///////////////////////////////////////		DATE/TIME COMPARISON TESTS /////////////////////////
-	//Type 1, localTime format: Sun Jan 01 00:02:49 -0500 2017
-	//Type 2, localTime format: 10/29/2012  2:22:00 PM
-	//console.log(getDate("Sun Jan 01 00:02:49 -0500 2017", 1));
-	//console.log(getDate("10/29/2012  2:22:00 PM", 2));
-	console.log("Test 1: should be -1");
-	console.log(comparePostTimes("Sun Jan 01 00:02:49 -0500 2017", "Sun Aug 18 00:04:09 -0500 2017", 1));
-	console.log("Test 2: should be 1");
-	console.log(comparePostTimes("Sun Jan 01 00:02:49 -0500 2017", "Sun Jan 01 00:01:49 -0500 2017", 1));
-	console.log("Test 3: should be 0");
-	console.log(comparePostTimes("Sun Jan 01 00:02:49 -0500 2017", "Sun Jan 01 00:02:49 -0500 2017", 1));
-
-	console.log("Test 1: should be -1");
-	console.log(comparePostTimes("10/29/2012  2:22:00 PM", "4/19/2013  2:22:00 PM", 2));
-	console.log("Test 2: should be 1");
-	console.log(comparePostTimes("10/29/2012  2:22:00 PM", "10/29/2012  2:22:00 AM", 2));
-	console.log("Test 3: should be 0");
-	console.log(comparePostTimes("10/29/2012  2:22:00 PM", "10/29/2012  2:22:00 PM", 2));
-	*/
-
-	
 
 	//Map
 	var map = L.map("map").setView([35,-95],3);
@@ -398,12 +435,10 @@ window.onload = function(){
 	}).addTo(map);
 	var layerGroup = L.layerGroup().addTo(map);
 
-
 	//Drag and drop zone
 	var dropZone = document.getElementById("dropZone");
 	dropZone.addEventListener("dragover", handleDragOver, false);
 	dropZone.addEventListener("drop", handleFileSelect, false);
-
 
 	//AnalyzeButton
 	document.getElementById("analyzeButton").addEventListener("click", function(){
@@ -448,6 +483,14 @@ window.onload = function(){
 			addLocationMarkers(tweets, tweetLayer);
 			//Adjust the map to fit the markers
 			map.fitBounds(tweetLayer.getBounds());
+
+			var timeInterval = 0;
+			try{
+				timeInterval = parseInt(document.getElementById("timeInterval").value);
+			} catch {
+				alert("Incorrect number input");
+			}
+			updateChartTimeInterval(tweets, timeInterval, globalCSVType);
 			
 		};
 		reader.readAsText(inFile);

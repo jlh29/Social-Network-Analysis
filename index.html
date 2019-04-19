@@ -7,7 +7,8 @@
 	<link rel="stylesheet" href="https://unpkg.com/leaflet@1.0.3/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.0.3/dist/leaflet.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.0/jquery.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.min.js"></script>
+    <script src="https://canvasjs.com/assets/script/canvasjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.min.js"></script>
     <script src="plotter.js"></script>
 
     <style>  
@@ -21,7 +22,7 @@
     		margin: auto;
     		padding: 40px;
     	}
-    	#datacontainer {
+    	#dataContainer {
     		width: 67%;
 		    height: 100%;
 		    border: 1px solid black;
@@ -80,16 +81,20 @@
 		<p>Type 1: label, tweet_object, infered_point, local_time</p>
 		<p>Type 2: ID, userID, date, Followers, Friends, Statuses, Lat, Long, Text, Class, BoroCode, BoroName, NTAName, CenstracID</p>
 		<div id="spacer"></div>
+		<div id="timeIntervalDiv">
+			<p>Time interval for graph (mins)</p>
+			<input id="timeInterval" type="text" value="15"/>
+		</div>
 		<div id="buttonDiv">
 			<button type="button" id="analyzeButton">Analyze</button>
 		</div>
 	</div>
 	<div id="spacer"></div>
-	<div id="datacontainer">
+	<div id="dataContainer">
 		<div id="map"></div>
-		<div id="linegraph">
+		<div id="lineGraphDiv">
 			<h3 text-align="center">Further analysis will go here</h3>
-			<canvas id="lineGraph"></canvas>
+			<div id="lineGraph"></div>
 		</div>
 	</div>
 
