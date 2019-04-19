@@ -339,6 +339,10 @@ function handleDragOver(event){
 	event.dataTransfer.dropEffect = "copy";
 }
 
+function lerpColor(color1, color2, t){
+	
+}
+
 //Need to deal with not only duplicates, but markers that are very close to each other, 
 //as shown in the NYCsandy_during.csv. Not yet complete 
 function addLocationMarkers(tweetObjects, geoJSONLayer){
@@ -369,6 +373,7 @@ function updateChartTimeInterval(tweets, timeInterval, csvType = globalCSVType){
 		axisY:{title:"Number of Tweets"},
 		axisX:{title:"Time"},
 		data:[{type:"line", dataPoints:dataPoints}]
+
 		/*
 		scales:     {
                 xAxes: [{
@@ -466,12 +471,26 @@ window.onload = function(){
 			//Clear all markers if any are present
 			layerGroup.clearLayers();
 			//Add a new tweet layer on the map that holds all of the markers
-			var tweetLayer = L.geoJSON(null, {onEachFeature: function(feature, layer){
-				//Popup contents:
-				layer.bindPopup("<b>There " + ((feature.numAtLocation > 1)?"are ":"is ") + feature.numAtLocation + " Tweet" + ((feature.numAtLocation>1)?"s":"") + " from this location</b>");
-			}}).addTo(layerGroup);
+			var tweetLayer = L.geoJSON(null, {
+				onEachFeature: function(feature, layer){
+					//Popup contents:
+					layer.bindPopup("<b>There " + ((feature.numAtLocation > 1)?"are ":"is ") + feature.numAtLocation + " Tweet" + ((feature.numAtLocation>1)?"s":"") + " from this location</b>");
+				},
+				pointToLayer: function(feature, latlng){
+					////// Could add a gradient of colors depending on the number of tweets from that location
+					return L.circleMarker(latlng, {
+						weight: 1,
+						fillOpacity: 0.8,
+						opacity: 1,
+						color: "#000",
+						fillColor: "#0494CE",
+						radius: 8
+					});
+				}
 
-			
+			}).addTo(layerGroup);
+
+
 			//Create a file reader, and read it to csvText
 			var reader = new FileReader();
 			var csvText = "";
