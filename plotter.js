@@ -434,22 +434,16 @@ window.onload = function(){
 	    accessToken: 'pk.eyJ1IjoiamxoMjkiLCJhIjoiY2p1a3lncDdxMHI1MTQzbzR0NDN4bDdxciJ9.v5aYG6rQPqpJONdRVSiRZw'
 	}).addTo(map);
 	var layerGroup = L.layerGroup().addTo(map);
+	var tweets = [];
 
 	//Drag and drop zone
 	var dropZone = document.getElementById("dropZone");
 	dropZone.addEventListener("dragover", handleDragOver, false);
 	dropZone.addEventListener("drop", handleFileSelect, false);
+	var lastFile = undefined;
 
 	//AnalyzeButton
 	document.getElementById("analyzeButton").addEventListener("click", function(){
-
-		//Clear all markers if any are present
-		layerGroup.clearLayers();
-		//Add a new tweet layer on the map that holds all of the markers
-		var tweetLayer = L.geoJSON(null, {onEachFeature: function(feature, layer){
-			//Popup contents:
-			layer.bindPopup("<b>There " + ((feature.numAtLocation > 1)?"are ":"is ") + feature.numAtLocation + " Tweet" + ((feature.numAtLocation>1)?"s":"") + " from this location</b>");
-		}}).addTo(layerGroup);
 
 		/////////////////Reading file and creating a tweetObject array///////////////// 
 		if(document.getElementById("fileSelector").files.length == 0){
@@ -467,23 +461,46 @@ window.onload = function(){
 				}
 			}
 		}
-		//Create a file reader, and read it to csvText
-		var reader = new FileReader();
-		var csvText = "";
-		//Code is executed when the reader is fully loaded and ready to operate on the file
-		reader.onload = function(e) {
-			csvText = reader.result;
-			//Grab the selected type (or recognize if there is not a type specified)
-			var radioButton = document.querySelector("input[name=\"csvTypeRadio\"]:checked");
-			var csvType = (radioButton==null)?0:radioButton.value;
-			//Create tweets array
-			var tweets = convertCSVToObjs(csvText, csvType);
-			console.log("Gathered " + tweets.length + " tweets");
-			//Add the markers to the map
-			addLocationMarkers(tweets, tweetLayer);
-			//Adjust the map to fit the markers
-			map.fitBounds(tweetLayer.getBounds());
+		if(inFile != lastFile){
 
+			//Clear all markers if any are present
+			layerGroup.clearLayers();
+			//Add a new tweet layer on the map that holds all of the markers
+			var tweetLayer = L.geoJSON(null, {onEachFeature: function(feature, layer){
+				//Popup contents:
+				layer.bindPopup("<b>There " + ((feature.numAtLocation > 1)?"are ":"is ") + feature.numAtLocation + " Tweet" + ((feature.numAtLocation>1)?"s":"") + " from this location</b>");
+			}}).addTo(layerGroup);
+
+			
+			//Create a file reader, and read it to csvText
+			var reader = new FileReader();
+			var csvText = "";
+			//Code is executed when the reader is fully loaded and ready to operate on the file
+			reader.onload = function(e) {
+				csvText = reader.result;
+				//Grab the selected type (or recognize if there is not a type specified)
+				var radioButton = document.querySelector("input[name=\"csvTypeRadio\"]:checked");
+				var csvType = (radioButton==null)?0:radioButton.value;
+				//Create tweets array
+				tweets = convertCSVToObjs(csvText, csvType);
+				console.log("Gathered " + tweets.length + " tweets");
+				//Add the markers to the map
+				addLocationMarkers(tweets, tweetLayer);
+				//Adjust the map to fit the markers
+				map.fitBounds(tweetLayer.getBounds());
+
+				var timeInterval = 0;
+				try{
+					timeInterval = parseInt(document.getElementById("timeInterval").value);
+				} catch {
+					alert("Incorrect number input");
+				}
+				updateChartTimeInterval(tweets, timeInterval, globalCSVType);
+				
+			};
+			reader.readAsText(inFile);
+			lastFile = inFile;
+		} else {
 			var timeInterval = 0;
 			try{
 				timeInterval = parseInt(document.getElementById("timeInterval").value);
@@ -491,9 +508,7 @@ window.onload = function(){
 				alert("Incorrect number input");
 			}
 			updateChartTimeInterval(tweets, timeInterval, globalCSVType);
-			
-		};
-		reader.readAsText(inFile);
+		}
 		
 	});
 
