@@ -6,6 +6,8 @@
 
 //Stores the CSV type of the last read file
 var globalCSVType = 1;
+var globalFilterDate1 = undefined;
+var globalFilterDate2 = undefined;
 
 //This function converts the text from a CSV file that matches one of the predefined formats into 
 //an array of "tweet" objects that contain a label (which is a description in Type 2 and
@@ -112,6 +114,19 @@ function filterDate(csvObjects, desiredDate){
 		if(compareDatesObjs(currDate, desiredDate) == 0){
 			filtered.push(csvObjects[i]);
 		}
+	}
+	return filtered;
+}
+
+function filterDateRange(csvObjects, minDate, maxDate){
+	if(compareDatesObjs(minDate,maxDate) == 0){
+		return filterDate(csvObjects, minDate);
+	}
+	var filtered = [];
+	for(var i = 0; i < csvObjects.length; i++){
+		var currDate = new Date(csvObjects[i].localTime);
+		if(compareDatesObjs(minDate, currDate) <= 0 && compareDatesObjs(currDate, maxDate) <= 0)
+			filtered.push(csvObjects[i]);
 	}
 	return filtered;
 }
@@ -401,6 +416,9 @@ function getTimeDifference(dateObj1, dateObj2){
 //This code runs when the page is fully loaded and mainly deals with loading and handling the file,
 //as well as showing the data on the map
 window.onload = function(){
+	var currentDate = new Date();
+	document.getElementById("date2").value = (currentDate.getMonth()+1) + "/" + currentDate.getDate() + "/" + currentDate.getFullYear();
+
 	//Map
 	var map = L.map("map").setView([35,-95],3);
 	L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}', {
@@ -411,6 +429,7 @@ window.onload = function(){
 	}).addTo(map);
 	var layerGroup = L.layerGroup().addTo(map);
 	var tweets = [];
+	var shownTweets = [];
 
 	//Drag and drop zone
 	var dropZone = document.getElementById("dropZone");
@@ -420,7 +439,6 @@ window.onload = function(){
 
 	//AnalyzeButton
 	document.getElementById("analyzeButton").addEventListener("click", function(){
-
 		/////////////////Reading file and creating a tweetObject array///////////////// 
 		if(document.getElementById("fileSelector").files.length == 0){
 			alert("Please select a file!");
@@ -437,7 +455,18 @@ window.onload = function(){
 				}
 			}
 		}
-		if(inFile != lastFile){
+		if(inFile != lastFile || globalFilterDate1 != new Date(document.getElementById("date1").value) || globalFilterDate2 != new Date(document.getElementById("date2").value)){
+
+			var filterDate1 = new Date(document.getElementById("date1").value);
+			var filterDate2 = new Date(document.getElementById("date2").value);
+			if(filterDate2 < filterDate1){
+				alert("Incorrect date range");
+				return;
+			}
+			globalFilterDate1 = filterDate1;
+			globalFilterDate2 = filterDate2;
+
+
 
 			//Clear all markers if any are present
 			layerGroup.clearLayers();
@@ -474,9 +503,11 @@ window.onload = function(){
 				//Create tweets array
 				tweets = convertCSVToObjs(csvText, csvType);
 				console.log("Gathered " + tweets.length + " tweets");
+				shownTweets = filterDateRange(tweets, filterDate1, filterDate2);
+				console.log("Filtered to " + shownTweets.length + " tweets");
 				
 				//Add the markers to the map
-				addLocationMarkers(tweets, tweetLayer);
+				addLocationMarkers(shownTweets, tweetLayer);
 				//Adjust the map to fit the markers
 				map.fitBounds(tweetLayer.getBounds());
 
@@ -486,7 +517,7 @@ window.onload = function(){
 				} catch {
 					alert("Incorrect number input");
 				}
-				updateChartTimeInterval(tweets, timeInterval, globalCSVType);
+				updateChartTimeInterval(shownTweets, timeInterval, globalCSVType);
 				
 			};
 			reader.readAsText(inFile);
