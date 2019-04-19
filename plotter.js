@@ -360,7 +360,7 @@ function addLocationMarkers(tweetObjects, geoJSONLayer){
 		geoJSONLayer.addData(currPos);
 	}
 }
-
+//////Maybe connect the map to the chart so that hovered-over nodes will highlight markers on the map
 function updateChartTimeInterval(tweets, timeInterval, csvType = globalCSVType){
 	var dataPoints = [];
 	
